@@ -1,63 +1,162 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AdminHeader } from '../components/AdminHeader';
 import { Footer } from '../components/Footer';
 import { Button } from '../components/Button';
+import { apiFetch } from '../services/api';
+import { BASE_URL } from '../services/api';
 
 interface ProductFormData {
-  id?: number;
   name: string;
   description: string;
   price: number;
-  category: string;
+  flavor: string;
   size: string;
+  occasion: string;
   imageUrl: string;
 }
+
+const FLAVORS = ['Chocolate', 'Baunilha', 'Morango', 'Red Velvet', 'Limão', 'Ninho'];
+const SIZES = ['Pequeno', 'Médio', 'Grande'];
+const OCCASIONS = ['Aniversário', 'Casamento', 'Batizado', 'Corporativo'];
 
 export function ProductForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = !!id;
 
-  // Dados mockados pra teste
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
     price: 0,
-    category: 'Tradicional',
+    flavor: '',
     size: 'Médio',
+    occasion: '',
     imageUrl: '',
   });
 
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [loading, setLoading] = useState(isEditing);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Se estiver editando, carrega os dados do produto
+  useEffect(() => {
+    if (!isEditing) return;
+
+    apiFetch<ProductFormData & { id: string }>(`/products/${id}`)
+      .then((data) => {
+        setFormData({
+          name: data.name,
+          description: data.description,
+          price: Number(data.price),
+          flavor: data.flavor ?? '',
+          size: data.size ?? 'Médio',
+          occasion: data.occasion ?? '',
+          imageUrl: data.imageUrl ?? '',
+        });
+        if (data.imageUrl) setImagePreview(`${BASE_URL}${data.imageUrl}`);
+      })
+      .catch(() => setSubmitError('Erro ao carregar produto.'))
+      .finally(() => setLoading(false));
+  }, [id, isEditing]);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: name === 'price' ? parseFloat(value) || 0 : value,
     }));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setImagePreview(result);
-        setFormData(prev => ({ ...prev, imageUrl: result }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Preview local imediato
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    // Upload real para o backend
+    setUploading(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('image', file);
+
+      const response = await fetch(`${BASE_URL}/upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formDataUpload,
+      });
+
+      if (!response.ok) throw new Error('Erro no upload');
+
+      const { imageUrl } = await response.json() as { imageUrl: string };
+      setFormData((prev) => ({ ...prev, imageUrl }));
+    } catch {
+      setSubmitError('Erro ao fazer upload da imagem. Tente novamente.');
+    } finally {
+      setUploading(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Implementar lógica de salvar
-    console.log('Saving product:', formData);
-    navigate('/admin/produtos');
+    setSubmitError('');
+
+    if (!formData.imageUrl && !isEditing) {
+      setSubmitError('Aguarde o upload da imagem antes de salvar.');
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const body = {
+        name: formData.name,
+        description: formData.description,
+        price: formData.price,
+        flavor: formData.flavor || undefined,
+        size: formData.size || undefined,
+        occasion: formData.occasion || undefined,
+        imageUrl: formData.imageUrl || undefined,
+      };
+
+      if (isEditing) {
+        await apiFetch(`/products/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(body),
+        });
+      } else {
+        await apiFetch('/products', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+      }
+
+      navigate('/admin/produtos');
+    } catch (err: unknown) {
+      const msg = (err as { error?: string })?.error || 'Erro ao salvar produto.';
+      setSubmitError(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <AdminHeader />
+        <div className="flex-1 flex items-center justify-center text-gray-400">
+          Carregando produto...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -80,6 +179,7 @@ export function ProductForm() {
 
           <div className="bg-white rounded-xl shadow-sm p-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
+
               <div>
                 <label htmlFor="name" className="block text-sm font-bold text-gray-800 mb-2">
                   Nome do Produto *
@@ -132,21 +232,20 @@ export function ProductForm() {
                 </div>
 
                 <div>
-                  <label htmlFor="category" className="block text-sm font-bold text-gray-800 mb-2">
-                    Categoria *
+                  <label htmlFor="flavor" className="block text-sm font-bold text-gray-800 mb-2">
+                    Sabor
                   </label>
                   <select
-                    id="category"
-                    name="category"
-                    value={formData.category}
+                    id="flavor"
+                    name="flavor"
+                    value={formData.flavor}
                     onChange={handleChange}
                     className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all"
-                    required
                   >
-                    <option value="Tradicional">Tradicional</option>
-                    <option value="Especial">Especial</option>
-                    <option value="Frutas">Frutas</option>
-                    <option value="Chocolate">Chocolate</option>
+                    <option value="">Selecione...</option>
+                    {FLAVORS.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -154,7 +253,7 @@ export function ProductForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="size" className="block text-sm font-bold text-gray-800 mb-2">
-                    Tamanho *
+                    Tamanho
                   </label>
                   <select
                     id="size"
@@ -162,41 +261,57 @@ export function ProductForm() {
                     value={formData.size}
                     onChange={handleChange}
                     className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all"
-                    required
                   >
-                    <option value="Pequeno">Pequeno (15cm)</option>
-                    <option value="Médio">Médio (20cm)</option>
-                    <option value="Grande">Grande (25cm)</option>
+                    {SIZES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label htmlFor="imageFile" className="block text-sm font-bold text-gray-800 mb-2">
-                    Imagem do Produto *
+                  <label htmlFor="occasion" className="block text-sm font-bold text-gray-800 mb-2">
+                    Ocasião
                   </label>
-                  <input
-                    type="file"
-                    id="imageFile"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100 file:cursor-pointer"
-                    required={!isEditing}
-                  />
+                  <select
+                    id="occasion"
+                    name="occasion"
+                    value={formData.occasion}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all"
+                  >
+                    <option value="">Selecione...</option>
+                    {OCCASIONS.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
+              <div>
+                <label htmlFor="imageFile" className="block text-sm font-bold text-gray-800 mb-2">
+                  Imagem do Produto {!isEditing && '*'}
+                </label>
+                <input
+                  type="file"
+                  id="imageFile"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleImageChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100 file:cursor-pointer"
+                />
+                {uploading && (
+                  <p className="text-sm text-pink-600 mt-1">Fazendo upload da imagem...</p>
+                )}
+              </div>
+
+              {/* Preview */}
               <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                 <p className="text-xs font-bold text-gray-600 mb-4 uppercase tracking-wide">
-                  Pré-visualização do Card
+                  Pré-visualização
                 </p>
                 <div className="bg-white rounded-xl shadow-sm overflow-hidden max-w-xs mx-auto">
                   <div className="bg-gradient-to-br from-pink-100 to-purple-100 h-40 flex items-center justify-center overflow-hidden">
-                    {imagePreview || formData.imageUrl ? (
-                      <img
-                        src={imagePreview || formData.imageUrl}
-                        alt={formData.name || 'Produto'}
-                        className="w-full h-full object-cover"
-                      />
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
                       <div className="text-center text-gray-400">
                         <div className="text-5xl mb-2">📷</div>
@@ -211,23 +326,18 @@ export function ProductForm() {
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">
                       {formData.description || 'Descrição do produto'}
                     </p>
-                    <div className="text-xl font-bold text-pink-600 mb-4">
+                    <div className="text-xl font-bold text-pink-600">
                       R$ {formData.price.toFixed(2)}
-                    </div>
-                    <div className="flex gap-2">
-                      <button type="button" className="flex-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-bold">
-                        ✏️ Editar
-                      </button>
-                      <button type="button" className="bg-gray-200 p-2 rounded-lg text-sm">
-                        ⚙️
-                      </button>
-                      <button type="button" className="bg-red-100 text-red-600 p-2 rounded-lg text-sm">
-                        🗑️
-                      </button>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {submitError && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 text-sm text-red-700 font-medium">
+                  ⚠️ {submitError}
+                </div>
+              )}
 
               <div className="flex flex-col-reverse md:flex-row gap-4 pt-4 border-t border-gray-200">
                 <button
@@ -237,8 +347,8 @@ export function ProductForm() {
                 >
                   Cancelar
                 </button>
-                <Button type="submit" fullWidth className="flex-1">
-                  {isEditing ? '💾 Salvar Alterações' : '✨ Adicionar Produto'}
+                <Button type="submit" fullWidth className="flex-1" disabled={submitting || uploading}>
+                  {submitting ? 'Salvando...' : isEditing ? '💾 Salvar Alterações' : '✨ Adicionar Produto'}
                 </Button>
               </div>
             </form>

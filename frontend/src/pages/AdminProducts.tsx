@@ -1,28 +1,71 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminHeader } from '../components/AdminHeader';
 import { Footer } from '../components/Footer';
+import { apiFetch } from '../services/api';
+import { BASE_URL } from '../services/api';
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
   description: string;
-  price: number;
-  imageUrl: string;
+  price: number | string;
+  imageUrl: string | null;
+  available: boolean;
 }
-
-const mockProducts: Product[] = Array(8).fill(null).map((_, i) => ({
-  id: i + 1,
-  name: 'Título do Card',
-  description: 'Descrição breve do conteúdo',
-  price: 100.00,
-  imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400',
-}));
 
 export function AdminProducts() {
   const navigate = useNavigate();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filtered, setFiltered] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('Todos os produtos');
+
+  useEffect(() => {
+    apiFetch<Product[]>('/products')
+      .then((data) => {
+        setProducts(data);
+        setFiltered(data);
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const term = searchTerm.toLowerCase();
+    setFiltered(
+      products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(term) ||
+          p.description.toLowerCase().includes(term),
+      ),
+    );
+  }, [searchTerm, products]);
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Tem certeza que deseja excluir "${name}"?`)) return;
+
+    try {
+      await apiFetch(`/products/${id}`, { method: 'DELETE' });
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+    } catch (err: unknown) {
+      const msg = (err as { error?: string })?.error || 'Erro ao excluir produto.';
+      alert(msg);
+    }
+  }
+
+  async function handleToggleAvailable(id: string, current: boolean) {
+    try {
+      const updated = await apiFetch<Product>(`/products/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ available: !current }),
+      });
+      setProducts((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    } catch {
+      alert('Erro ao atualizar produto. Tente novamente.');
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -33,7 +76,9 @@ export function AdminProducts() {
           <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-pink-900">Gerenciar Produtos</h1>
-              <p className="text-gray-600 text-sm mt-1">24 produtos disponíveis</p>
+              <p className="text-gray-600 text-sm mt-1">
+                {loading ? 'Carregando...' : `${filtered.length} produto${filtered.length !== 1 ? 's' : ''}`}
+              </p>
             </div>
             <button
               onClick={() => navigate('/admin/produtos/novo')}
@@ -44,111 +89,127 @@ export function AdminProducts() {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="relative">
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all text-gray-700 font-medium"
-                >
-                  <option>Todos os produtos</option>
-                  <option>Bolos Tradicionais</option>
-                  <option>Bolos Especiais</option>
-                  <option>Bolos de Frutas</option>
-                </select>
-              </div>
-
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar produtos..."
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all"
-                />
-                <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-gray-200 p-2 rounded-md transition-colors">
-                  🔍
-                </button>
-              </div>
-            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por nome ou descrição..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all"
+            />
           </div>
 
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {mockProducts.map((product) => (
-              <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                <div className="bg-gradient-to-br from-pink-100 to-purple-100 h-40 flex items-center justify-center overflow-hidden">
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-bold text-gray-900 mb-1">{product.name}</h3>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-                  <div className="text-xl font-bold text-pink-600 mb-4">
-                    R$ {product.price.toFixed(2)}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => navigate(`/admin/produtos/${product.id}/editar`)}
-                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-bold transition-colors"
-                    >
-                      ✏️ Editar
-                    </button>
-                    <button className="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg transition-colors">
-                      ⚙️
-                    </button>
-                    <button className="bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-lg transition-colors">
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          {loading && (
+            <p className="text-center text-gray-400 py-20">Carregando produtos...</p>
+          )}
 
-          <div className="md:hidden space-y-4 mb-6">
-            {mockProducts.map((product) => (
-              <div key={product.id} className="bg-white rounded-xl shadow-sm p-4">
-                <div className="flex gap-4">
-                  <div className="bg-gradient-to-br from-pink-100 to-purple-100 w-20 h-20 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
+          {error && (
+            <p className="text-center text-red-400 py-20">Erro ao carregar produtos. Tente novamente.</p>
+          )}
+
+          {!loading && !error && filtered.length === 0 && (
+            <p className="text-center text-gray-400 py-20">Nenhum produto encontrado.</p>
+          )}
+
+          {/* Desktop */}
+          {!loading && !error && filtered.length > 0 && (
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {filtered.map((product) => (
+                <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                  <div className="bg-gradient-to-br from-pink-100 to-purple-100 h-40 flex items-center justify-center overflow-hidden">
+                    {product.imageUrl ? (
+                      <img src={`${BASE_URL}${product.imageUrl}`} alt={product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-5xl">🎂</span>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="p-4">
                     <h3 className="font-bold text-gray-900 mb-1 truncate">{product.name}</h3>
-                    <div className="text-lg font-bold text-pink-600 mb-2">
-                      R$ {product.price.toFixed(2)}
+                    <p className="text-sm text-gray-600 mb-1 line-clamp-2">{product.description}</p>
+                    <div className="text-xl font-bold text-pink-600 mb-1">
+                      R$ {Number(product.price).toFixed(2)}
+                    </div>
+                    <div className="mb-3">
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${product.available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {product.available ? 'Disponível' : 'Indisponível'}
+                      </span>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => navigate(`/admin/produtos/${product.id}/editar`)}
-                        className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold"
+                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-bold transition-colors"
                       >
-                        Editar
+                        ✏️ Editar
                       </button>
-                      <button className="bg-gray-200 p-1.5 rounded-lg text-sm">
-                        +
+                      <button
+                        onClick={() => handleToggleAvailable(product.id, product.available)}
+                        className="bg-gray-200 hover:bg-gray-300 p-2 rounded-lg transition-colors text-sm"
+                        title={product.available ? 'Desativar' : 'Ativar'}
+                      >
+                        {product.available ? '👁️' : '🚫'}
                       </button>
-                      <button className="bg-red-100 text-red-600 p-1.5 rounded-lg text-sm">
+                      <button
+                        onClick={() => handleDelete(product.id, product.name)}
+                        className="bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-lg transition-colors text-sm"
+                      >
                         🗑️
                       </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          <div className="flex justify-center gap-2">
-            <button className="w-10 h-10 rounded-lg bg-pink-600 text-white font-bold">1</button>
-            <button className="w-10 h-10 rounded-lg bg-white border border-gray-300 text-gray-700 hover:border-pink-400 transition-colors">2</button>
-            <button className="w-10 h-10 rounded-lg bg-white border border-gray-300 text-gray-700 hover:border-pink-400 transition-colors">3</button>
-          </div>
+          {/* Mobile */}
+          {!loading && !error && filtered.length > 0 && (
+            <div className="md:hidden space-y-4 mb-6">
+              {filtered.map((product) => (
+                <div key={product.id} className="bg-white rounded-xl shadow-sm p-4">
+                  <div className="flex gap-4">
+                    <div className="bg-gradient-to-br from-pink-100 to-purple-100 w-20 h-20 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {product.imageUrl ? (
+                        <img src={`${BASE_URL}${product.imageUrl}`} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-5xl">🎂</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 mb-1 truncate">{product.name}</h3>
+                      <div className="text-lg font-bold text-pink-600 mb-1">
+                        R$ {Number(product.price).toFixed(2)}
+                      </div>
+                      <div className="mb-2">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${product.available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {product.available ? 'Disponível' : 'Indisponível'}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => navigate(`/admin/produtos/${product.id}/editar`)}
+                          className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleToggleAvailable(product.id, product.available)}
+                          className="bg-gray-200 p-1.5 rounded-lg text-sm"
+                          title={product.available ? 'Desativar' : 'Ativar'}
+                        >
+                          {product.available ? '👁️' : '🚫'}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id, product.name)}
+                          className="bg-red-100 text-red-600 p-1.5 rounded-lg text-sm"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
 
