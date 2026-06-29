@@ -34,6 +34,7 @@ model Order {
   orderNumber   Int         @unique @default(autoincrement())
   customerName  String
   customerPhone String
+  customerEmail String?
   product       Product     @relation(fields: [productId], references: [id])
   productId     String
   size          String
