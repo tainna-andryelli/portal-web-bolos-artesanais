@@ -8,7 +8,6 @@ import { AdminProducts } from './pages/AdminProducts';
 import { ProductForm } from './pages/ProductForm';
 import { AdminOrders } from './pages/AdminOrders';
 import { OrderDetails } from './pages/OrderDetails';
-import './App.css';
 
 function App() {
   return (

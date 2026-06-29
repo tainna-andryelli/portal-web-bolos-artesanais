@@ -1,10 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Button } from '../components/Button';
+import { apiFetch } from '../services/api';
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface OrderResponse {
+  orderNumber: number;
+  productName: string;
+  deliveryDate: string;
+}
 
 interface FormData {
-  cake: string;
+  productId: string;
   size: string;
   deliveryDate: string;
   deliveryTime: string;
@@ -17,8 +30,13 @@ interface FormData {
 
 export function Order() {
   const navigate = useNavigate();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+
   const [formData, setFormData] = useState<FormData>({
-    cake: '',
+    productId: '',
     size: '',
     deliveryDate: '',
     deliveryTime: '',
@@ -29,21 +47,67 @@ export function Order() {
     gdprConsent: false,
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    apiFetch<Product[]>('/products')
+      .then(setProducts)
+      .catch(() => setProducts([]))
+      .finally(() => setLoadingProducts(false));
+  }, []);
+
+  const handleChange = (field: keyof FormData, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setSubmitError('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!formData.cake || !formData.size || !formData.deliveryDate || !formData.name || !formData.phone || !formData.gdprConsent) {
-      alert('Por favor, preencha todos os campos obrigatórios');
+    if (!formData.productId || !formData.size || !formData.deliveryDate || !formData.name || !formData.phone || !formData.gdprConsent) {
+      setSubmitError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
-    const orderId = Math.floor(Math.random() * 9000) + 1000;
-    navigate(`/confirmacao/${orderId}`, { state: { orderData: formData } });
+    // Combina data + hora em ISO datetime (obrigatório pelo schema Zod do backend)
+    const time = formData.deliveryTime || '12:00';
+    const deliveryDate = new Date(`${formData.deliveryDate}T${time}:00`).toISOString();
+
+    setSubmitting(true);
+    setSubmitError('');
+
+    try {
+      const data = await apiFetch<OrderResponse>('/orders', {
+        method: 'POST',
+        body: JSON.stringify({
+          productId: formData.productId,
+          customerName: formData.name,
+          customerPhone: formData.phone,
+          customerEmail: formData.email || undefined,
+          size: formData.size,
+          deliveryDate,
+          notes: formData.observations || undefined,
+        }),
+      });
+
+      navigate(`/confirmacao/${data.orderNumber}`, {
+        state: {
+          orderNumber: data.orderNumber,
+          productName: data.productName,
+          deliveryDate: data.deliveryDate,
+          customerName: formData.name,
+          customerPhone: formData.phone,
+          size: formData.size,
+          deliveryTime: formData.deliveryTime,
+        },
+      });
+    } catch (err: unknown) {
+      const msg = (err as { error?: string })?.error || 'Erro ao enviar pedido. Tente novamente.';
+      setSubmitError(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleChange = (field: keyof FormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  const today = new Date().toISOString().split('T')[0];
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -59,22 +123,30 @@ export function Order() {
 
       <div className="flex-1 px-4 md:px-6 lg:px-8 py-6 md:py-8">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
+
           <div>
             <label className="block font-bold text-gray-800 mb-2 text-sm md:text-base">
               Escolha o Bolo <span className="text-pink-600">*</span>
             </label>
-            <select
-              value={formData.cake}
-              onChange={(e) => handleChange('cake', e.target.value)}
-              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-sm md:text-base focus:border-pink-500 focus:outline-none"
-              required
-            >
-              <option value="">Selecione o bolo...</option>
-              <option value="red-velvet">Bolo Red Velvet - R$ 89,90</option>
-              <option value="chocolate">Bolo de Chocolate - R$ 75,00</option>
-              <option value="morango">Bolo de Morango - R$ 82,00</option>
-              <option value="limao">Bolo de Limão - R$ 78,00</option>
-            </select>
+            {loadingProducts ? (
+              <div className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-400 bg-gray-50">
+                Carregando produtos...
+              </div>
+            ) : (
+              <select
+                value={formData.productId}
+                onChange={(e) => handleChange('productId', e.target.value)}
+                className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-sm md:text-base focus:border-pink-500 focus:outline-none"
+                required
+              >
+                <option value="">Selecione o bolo...</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — {Number(p.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
@@ -90,7 +162,7 @@ export function Order() {
                 <label
                   key={option.size}
                   className={`flex flex-col items-center p-3 md:p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${
-                    formData.size === option.size.toLowerCase()
+                    formData.size === option.size
                       ? 'border-pink-500 bg-pink-50'
                       : 'border-gray-300 hover:border-pink-300'
                   }`}
@@ -98,8 +170,8 @@ export function Order() {
                   <input
                     type="radio"
                     name="size"
-                    value={option.size.toLowerCase()}
-                    checked={formData.size === option.size.toLowerCase()}
+                    value={option.size}
+                    checked={formData.size === option.size}
                     onChange={(e) => handleChange('size', e.target.value)}
                     className="mb-2"
                     required
@@ -119,6 +191,7 @@ export function Order() {
               </label>
               <input
                 type="date"
+                min={today}
                 value={formData.deliveryDate}
                 onChange={(e) => handleChange('deliveryDate', e.target.value)}
                 className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-sm md:text-base focus:border-pink-500 focus:outline-none"
@@ -211,16 +284,23 @@ export function Order() {
             </label>
           </div>
 
+          {submitError && (
+            <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 text-sm text-red-700 font-medium">
+              ⚠️ {submitError}
+            </div>
+          )}
+
           <div className="flex flex-col md:flex-row gap-4 pt-4">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="flex-1 border-2 border-gray-300 text-gray-700 py-3 md:py-4 rounded-xl font-bold hover:bg-gray-100 transition-colors"
+              disabled={submitting}
+              className="flex-1 border-2 border-gray-300 text-gray-700 py-3 md:py-4 rounded-xl font-bold hover:bg-gray-100 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
-            <Button type="submit" size="lg" fullWidth className="flex-1">
-              Confirmar Pedido ✓
+            <Button type="submit" size="lg" fullWidth className="flex-1" disabled={submitting}>
+              {submitting ? 'Enviando...' : 'Confirmar Pedido ✓'}
             </Button>
           </div>
         </form>

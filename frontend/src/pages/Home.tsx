@@ -1,35 +1,32 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { ProductCard } from '../components/ProductCard';
 import { Button } from '../components/Button';
+import { apiFetch } from '../services/api';
 
-const featuredProducts = [
-  {
-    id: 1,
-    name: 'Bolo Red Velvet',
-    price: 89.90,
-    image: '🎂',
-    description: 'Massa fofinha com recheio de cream cheese',
-  },
-  {
-    id: 2,
-    name: 'Bolo de Chocolate',
-    price: 75.00,
-    image: '🍫',
-    description: 'Ganache 70% cacau, 3 camadas',
-  },
-  {
-    id: 3,
-    name: 'Bolo de Morango',
-    price: 82.00,
-    image: '🍓',
-    description: 'Morangos frescos e chantilly artesanal',
-  },
-];
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string | null;
+  available: boolean;
+}
 
 export function Home() {
   const navigate = useNavigate();
+  const [featured, setFeatured] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    apiFetch<Product[]>('/products')
+      .then((data) => setFeatured(data.slice(0, 3)))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -55,15 +52,34 @@ export function Home() {
           <h2 className="text-2xl md:text-3xl font-bold text-center text-pink-900 mb-8 flex items-center justify-center gap-2">
             <span>✨</span> Destaques da Semana
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {featuredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                {...product}
-                onOrder={() => navigate('/encomenda')}
-              />
-            ))}
-          </div>
+
+          {loading && (
+            <p className="text-center text-gray-400 py-12">Carregando produtos...</p>
+          )}
+
+          {error && (
+            <p className="text-center text-red-400 py-12">
+              Não foi possível carregar os produtos. Tente novamente mais tarde.
+            </p>
+          )}
+
+          {!loading && !error && featured.length === 0 && (
+            <p className="text-center text-gray-400 py-12">
+              Nenhum produto disponível no momento.
+            </p>
+          )}
+
+          {!loading && !error && featured.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              {featured.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  {...product}
+                  onOrder={() => navigate('/encomenda')}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -75,11 +91,7 @@ export function Home() {
           <p className="text-pink-100 mb-8 text-base md:text-lg">
             Entre em contato conosco e encomende o bolo perfeito para sua ocasião
           </p>
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => navigate('/encomenda')}
-          >
+          <Button variant="secondary" size="lg" onClick={() => navigate('/encomenda')}>
             Fazer Encomenda
           </Button>
         </div>

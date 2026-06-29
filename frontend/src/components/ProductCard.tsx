@@ -1,17 +1,23 @@
 interface ProductCardProps {
   name: string;
-  price: number;
-  image: string;
+  price: number | string;
+  imageUrl?: string | null;
   description?: string;
   onOrder?: () => void;
 }
 
-export function ProductCard({ name, price, image, description, onOrder }: ProductCardProps) {
+export function ProductCard({ name, price, imageUrl, description, onOrder }: ProductCardProps) {
+  const formattedPrice = Number(price).toFixed(2).replace('.', ',');
+
   return (
     <>
       <div className="md:hidden bg-white rounded-xl shadow border border-gray-100 overflow-hidden flex">
         <div className="w-24 bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-4xl flex-shrink-0">
-          {image}
+          {imageUrl ? (
+            <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-4xl">🎂</span>
+          )}
         </div>
         <div className="p-4 flex-1">
           <div className="font-bold text-pink-900 text-sm mb-1">{name}</div>
@@ -20,7 +26,7 @@ export function ProductCard({ name, price, image, description, onOrder }: Produc
           )}
           <div className="flex justify-between items-center">
             <div className="text-pink-600 font-bold text-base">
-              R$ {price.toFixed(2).replace('.', ',')}
+              R$ {formattedPrice}
             </div>
             {onOrder && (
               <button
@@ -36,7 +42,11 @@ export function ProductCard({ name, price, image, description, onOrder }: Produc
 
       <div className="hidden md:block bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all transform hover:-translate-y-1">
         <div className="aspect-square bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-6xl lg:text-7xl">
-          {image}
+          {imageUrl ? (
+            <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-6xl lg:text-7xl">🎂</span>
+          )}
         </div>
         <div className="p-5">
           <h3 className="text-lg font-bold text-pink-900 mb-2">{name}</h3>
@@ -45,7 +55,7 @@ export function ProductCard({ name, price, image, description, onOrder }: Produc
           )}
           <div className="flex justify-between items-center">
             <div className="text-2xl font-bold text-pink-600">
-              R$ {price.toFixed(2).replace('.', ',')}
+              R$ {formattedPrice}
             </div>
             {onOrder && (
               <button

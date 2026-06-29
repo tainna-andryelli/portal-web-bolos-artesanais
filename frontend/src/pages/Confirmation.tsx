@@ -1,11 +1,25 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/Button';
 
+interface OrderState {
+  orderNumber: number;
+  productName: string;
+  deliveryDate: string;
+  customerName: string;
+  customerPhone: string;
+  size: string;
+  deliveryTime: string;
+}
+
 export function Confirmation() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const orderData = location.state?.orderData;
+  const state = location.state as OrderState | null;
+
+  const formattedDate = state?.deliveryDate
+    ? new Date(state.deliveryDate).toLocaleDateString('pt-BR')
+    : null;
 
   return (
     <div className="min-h-screen bg-white">
@@ -24,25 +38,16 @@ export function Confirmation() {
           <div className="text-xs md:text-sm text-gray-500 mt-2">Anote este número para acompanhar seu pedido</div>
         </div>
 
-        {orderData && (
+        {state && (
           <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
             {[
-              {
-                label: 'Produto',
-                value: `${orderData.cake
-                  ? orderData.cake.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-                  : 'Bolo Red Velvet'} - ${orderData.size
-                  ? orderData.size.charAt(0).toUpperCase() + orderData.size.slice(1)
-                  : 'Médio'}`
-              },
+              { label: 'Produto', value: `${state.productName} — ${state.size}` },
               {
                 label: 'Data de Entrega',
-                value: `${orderData.deliveryDate
-                  ? new Date(orderData.deliveryDate + 'T00:00:00').toLocaleDateString('pt-BR')
-                  : '28/04/2026'}${orderData.deliveryTime ? ` às ${orderData.deliveryTime}` : ''}`
+                value: `${formattedDate}${state.deliveryTime ? ` às ${state.deliveryTime}` : ''}`,
               },
-              { label: 'Cliente', value: orderData.name || 'Cliente' },
-              { label: 'Telefone', value: orderData.phone || '(51) 9 9999-9999' },
+              { label: 'Cliente', value: state.customerName },
+              { label: 'Telefone', value: state.customerPhone },
             ].map((item) => (
               <div key={item.label} className="flex justify-between items-start py-3 border-b border-gray-200 last:border-0">
                 <div className="text-gray-600 text-sm md:text-base">{item.label}</div>
@@ -64,11 +69,7 @@ export function Confirmation() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-4">
-          <Button
-            size="lg"
-            fullWidth
-            onClick={() => navigate('/catalogo')}
-          >
+          <Button size="lg" fullWidth onClick={() => navigate('/catalogo')}>
             Voltar ao Catálogo
           </Button>
         </div>
