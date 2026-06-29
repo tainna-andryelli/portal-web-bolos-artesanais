@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { apiFetch } from '../services/api';
 
 export function AdminHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -11,9 +12,14 @@ export function AdminHeader() {
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + '/');
 
-  function handleLogout() {
-    logout();
-    navigate('/login');
+  async function handleLogout() {
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' });
+    } catch {
+    } finally {
+      logout();
+      navigate('/login');
+    }
   }
 
   return (

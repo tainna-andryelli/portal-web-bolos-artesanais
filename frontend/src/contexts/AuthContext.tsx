@@ -1,7 +1,9 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiFetch } from '../services/api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: () => void;
   logout: () => void;
 }
@@ -9,9 +11,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('isAuthenticated') === 'true';
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/auth/me', { cache: 'no-store' })
+      .then(() => {
+        setIsAuthenticated(true);
+        localStorage.setItem('isAuthenticated', 'true');
+      })
+      .catch(() => {
+        setIsAuthenticated(false);
+        localStorage.removeItem('isAuthenticated');
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   function login() {
     localStorage.setItem('isAuthenticated', 'true');
@@ -24,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
