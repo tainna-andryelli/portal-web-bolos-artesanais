@@ -1,17 +1,36 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
+import { useAuth } from '../contexts/AuthContext';
+import { apiFetch } from '../services/api';
 
 export function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement authentication logic
-    navigate('/admin/produtos');
+    setError('');
+    setLoading(true);
+
+    try {
+      await apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+
+      login();
+      navigate('/admin/produtos');
+    } catch (err: unknown) {
+      const msg = (err as { error?: string })?.error || 'E-mail ou senha incorretos';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,7 +59,7 @@ export function Login() {
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="gleci@doce.com"
+                  placeholder="admin@bolos.com"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all"
                   required
                 />
@@ -61,23 +80,14 @@ export function Login() {
                 />
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
-                  />
-                  <span className="text-gray-700">Lembrar de mim</span>
-                </label>
-                <button type="button" className="text-pink-600 hover:text-pink-700 font-medium">
-                  Esqueci minha senha
-                </button>
-              </div>
+              {error && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 text-sm text-red-700 font-medium">
+                  ⚠️ {error}
+                </div>
+              )}
 
-              <Button type="submit" fullWidth size="lg">
-                🔓 Entrar no Painel
+              <Button type="submit" fullWidth size="lg" disabled={loading}>
+                {loading ? 'Entrando...' : '🔓 Entrar no Painel'}
               </Button>
 
               <div className="text-center pt-4">

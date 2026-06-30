@@ -23,6 +23,9 @@ export function Header() {
             <Link to="/encomenda" className="bg-white text-pink-600 px-6 py-2 rounded-full font-bold hover:bg-pink-50 transition-all hover:shadow-lg">
               Encomendar
             </Link>
+            <Link to="/login" className="text-pink-200 hover:text-white text-xs transition-colors">
+              Área Admin
+            </Link>
           </nav>
         </div>
       </header>
@@ -73,13 +76,20 @@ export function Header() {
                   <span>{item.label}</span>
                 </Link>
               ))}
-              <div className="p-4">
+              <div className="p-4 space-y-3">
                 <Link
                   to="/encomenda"
                   onClick={() => setMenuOpen(false)}
                   className="block w-full bg-gradient-to-r from-pink-600 to-purple-600 text-white py-3 rounded-xl font-bold text-sm shadow-md text-center"
                 >
                   🎂 Encomendar Agora
+                </Link>
+                <Link
+                  to="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
+                >
+                  Área Admin
                 </Link>
               </div>
             </nav>

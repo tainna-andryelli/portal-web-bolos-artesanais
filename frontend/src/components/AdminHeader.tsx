@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export function AdminHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + '/');
+
+  function handleLogout() {
+    logout();
+    navigate('/login');
+  }
 
   return (
     <>
@@ -41,6 +50,12 @@ export function AdminHeader() {
             >
               Pedidos
             </Link>
+            <button
+              onClick={handleLogout}
+              className="text-sm font-medium text-gray-400 hover:text-red-400 transition-colors"
+            >
+              Sair
+            </button>
           </nav>
         </div>
       </header>
@@ -94,6 +109,12 @@ export function AdminHeader() {
                   <span>{item.label}</span>
                 </Link>
               ))}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 px-5 py-4 font-medium text-red-600 hover:bg-red-50 text-sm w-full text-left"
+              >
+                Sair
+              </button>
             </nav>
           </div>
         )}
