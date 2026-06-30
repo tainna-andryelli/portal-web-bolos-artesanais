@@ -40,7 +40,6 @@ export function OrderDetails() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     apiFetch<Order>(`/orders/${id}`)
@@ -54,14 +53,12 @@ export function OrderDetails() {
 
   async function handleSave() {
     setSaving(true);
-    setSaveSuccess(false);
     try {
       await apiFetch(`/orders/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       });
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      navigate('/admin/pedidos');
     } catch {
       alert('Erro ao salvar. Tente novamente.');
     } finally {
@@ -205,12 +202,6 @@ export function OrderDetails() {
                   ⚡ <span className="font-bold">Ações</span>
                 </div>
 
-                {saveSuccess && (
-                  <p className="text-green-600 text-sm font-medium text-center">
-                    ✅ Status atualizado com sucesso!
-                  </p>
-                )}
-
                 <button
                   onClick={handleSave}
                   disabled={saving}
@@ -278,9 +269,6 @@ export function OrderDetails() {
               <div className="flex items-center gap-2 text-gray-600 text-sm">
                 ⚡ <span className="font-bold">Ações</span>
               </div>
-              {saveSuccess && (
-                <p className="text-green-600 text-sm font-medium text-center">✅ Status atualizado!</p>
-              )}
               <button
                 onClick={handleCancel}
                 disabled={saving || order.status === 'CANCELLED'}

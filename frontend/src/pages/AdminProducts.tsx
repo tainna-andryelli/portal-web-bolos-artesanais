@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminHeader } from '../components/AdminHeader';
 import { Footer } from '../components/Footer';
@@ -17,29 +17,23 @@ interface Product {
 export function AdminProducts() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
-  const [filtered, setFiltered] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     apiFetch<Product[]>('/products')
-      .then((data) => {
-        setProducts(data);
-        setFiltered(data);
-      })
+      .then(setProducts)
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    setFiltered(
-      products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(term) ||
-          p.description.toLowerCase().includes(term),
-      ),
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(term) ||
+        p.description.toLowerCase().includes(term),
     );
   }, [searchTerm, products]);
 

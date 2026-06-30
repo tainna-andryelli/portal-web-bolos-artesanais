@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminHeader } from '../components/AdminHeader';
 import { Footer } from '../components/Footer';
@@ -42,7 +42,6 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 export function AdminOrders() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filtered, setFiltered] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
@@ -50,21 +49,14 @@ export function AdminOrders() {
 
   useEffect(() => {
     apiFetch<Order[]>('/orders')
-      .then((data) => {
-        setOrders(data);
-        setFiltered(data);
-      })
+      .then(setOrders)
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     let result = orders;
-
-    if (statusFilter) {
-      result = result.filter((o) => o.status === statusFilter);
-    }
-
+    if (statusFilter) result = result.filter((o) => o.status === statusFilter);
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
@@ -74,9 +66,16 @@ export function AdminOrders() {
           o.product.name.toLowerCase().includes(term),
       );
     }
-
-    setFiltered(result);
+    return result;
   }, [statusFilter, searchTerm, orders]);
+
+  async function handleStatusChange(id: string, newStatus: OrderStatus) {
+    await apiFetch(`/orders/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: newStatus }),
+    });
+    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o)));
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -163,9 +162,15 @@ export function AdminOrders() {
                 <div key={order.id} className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-4">
                     <h3 className="text-3xl font-bold text-pink-600">#{order.orderNumber}</h3>
-                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${STATUS_COLORS[order.status]}`}>
-                      {STATUS_LABELS[order.status]}
-                    </span>
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
+                      className={`px-3 py-1 rounded-full text-sm font-bold border-0 cursor-pointer focus:ring-2 focus:ring-pink-500 outline-none ${STATUS_COLORS[order.status]}`}
+                    >
+                      {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="mb-3">
@@ -206,9 +211,15 @@ export function AdminOrders() {
                 <div key={order.id} className="bg-white rounded-xl shadow-sm p-4">
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="text-xl font-bold text-pink-600">#{order.orderNumber}</h3>
-                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${STATUS_COLORS[order.status]}`}>
-                      {STATUS_LABELS[order.status]}
-                    </span>
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
+                      className={`px-2 py-1 rounded-full text-xs font-bold border-0 cursor-pointer focus:ring-2 focus:ring-pink-500 outline-none ${STATUS_COLORS[order.status]}`}
+                    >
+                      {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-1 text-sm mb-4">
                     <div className="font-bold text-gray-900">{order.customerName}</div>

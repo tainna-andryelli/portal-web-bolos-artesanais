@@ -48,7 +48,7 @@ export function Home() {
       </section>
 
       <section className="px-4 md:px-6 lg:px-8 py-12 md:py-16 bg-white">
-        <div className="max-w-full">
+        <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-center text-pink-900 mb-8 flex items-center justify-center gap-2">
             <span>✨</span> Destaques da Semana
           </h2>

@@ -73,7 +73,7 @@ export function Catalog() {
       <Header />
 
       <div className="flex-1 bg-gray-50">
-        <div className="px-4 md:px-6 lg:px-8 py-6">
+        <div className="px-4 md:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
           <div className="mb-6 flex items-center justify-between flex-wrap gap-2">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-pink-900">Nosso Catálogo</h1>

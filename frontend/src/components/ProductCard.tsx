@@ -1,3 +1,5 @@
+import { BASE_URL } from '../services/api';
+
 interface ProductCardProps {
   name: string;
   price: number | string;
@@ -6,15 +8,22 @@ interface ProductCardProps {
   onOrder?: () => void;
 }
 
+function resolveImage(imageUrl?: string | null): string | null {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('data:')) return imageUrl;
+  return `${BASE_URL}${imageUrl}`;
+}
+
 export function ProductCard({ name, price, imageUrl, description, onOrder }: ProductCardProps) {
   const formattedPrice = Number(price).toFixed(2).replace('.', ',');
+  const src = resolveImage(imageUrl);
 
   return (
     <>
       <div className="md:hidden bg-white rounded-xl shadow border border-gray-100 overflow-hidden flex">
         <div className="w-24 bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-4xl flex-shrink-0">
-          {imageUrl ? (
-            <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+          {src ? (
+            <img src={src} alt={name} className="w-full h-full object-cover" />
           ) : (
             <span className="text-4xl">🎂</span>
           )}
@@ -41,9 +50,9 @@ export function ProductCard({ name, price, imageUrl, description, onOrder }: Pro
       </div>
 
       <div className="hidden md:block bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all transform hover:-translate-y-1">
-        <div className="aspect-square bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-6xl lg:text-7xl">
-          {imageUrl ? (
-            <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+        <div className="h-40 bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center overflow-hidden">
+          {src ? (
+            <img src={src} alt={name} className="w-full h-full object-cover" />
           ) : (
             <span className="text-6xl lg:text-7xl">🎂</span>
           )}

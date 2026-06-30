@@ -7,20 +7,21 @@ export async function login(req: Request, res: Response): Promise<void> {
   try {
     const { email, password } = req.body as { email: string; password: string };
 
-    const admin = await prisma.admin.findUnique({ where: { email } });
+    const admin = await prisma.admin.findUnique({ where: { email } }); // BUSCA ADMIN PELO LOGIN
     if (!admin) {
       res.status(401).json({ error: 'E-mail ou senha incorretos' });
       return;
     }
 
-    const valid = await bcrypt.compare(password, admin.passwordHash);
+    const valid = await bcrypt.compare(password, admin.passwordHash); // COMPARA SENHA 
     if (!valid) {
       res.status(401).json({ error: 'E-mail ou senha incorretos' });
       return;
     }
 
-    const token = generateToken(admin.id);
+    const token = generateToken(admin.id); // GERA JWT QUANDO LOGIN VÁLIDO
 
+    // ENVIA O TOKEN COMO COOKIE HTTPONLY
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
