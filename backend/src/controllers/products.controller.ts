@@ -19,6 +19,13 @@ export async function listProducts(req: Request, res: Response): Promise<void> {
   res.json(products);
 }
 
+export async function listAllProducts(_req: Request, res: Response): Promise<void> {
+  const products = await prisma.product.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(products);
+}
+
 export async function getProduct(req: Request<{ id: string }>, res: Response): Promise<void> {
   const { id } = req.params;
   const product = await prisma.product.findUnique({ where: { id } });
@@ -53,6 +60,12 @@ export async function deleteProduct(req: Request<{ id: string }>, res: Response)
   const existing = await prisma.product.findUnique({ where: { id } });
   if (!existing) {
     res.status(404).json({ error: 'Produto não encontrado' });
+    return;
+  }
+
+  const ordersCount = await prisma.order.count({ where: { productId: id } });
+  if (ordersCount > 0) {
+    res.status(409).json({ error: 'Este produto possui pedidos vinculados e não pode ser excluído. Marque-o como indisponível.' });
     return;
   }
 

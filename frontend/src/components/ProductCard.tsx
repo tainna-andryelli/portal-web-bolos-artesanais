@@ -6,6 +6,7 @@ interface ProductCardProps {
   imageUrl?: string | null;
   description?: string;
   onOrder?: () => void;
+  onDetail?: () => void;
 }
 
 function resolveImage(imageUrl?: string | null): string | null {
@@ -14,22 +15,28 @@ function resolveImage(imageUrl?: string | null): string | null {
   return `${BASE_URL}${imageUrl}`;
 }
 
-export function ProductCard({ name, price, imageUrl, description, onOrder }: ProductCardProps) {
+export function ProductCard({ name, price, imageUrl, description, onOrder, onDetail }: ProductCardProps) {
   const formattedPrice = Number(price).toFixed(2).replace('.', ',');
   const src = resolveImage(imageUrl);
 
   return (
     <>
+      {/* Mobile */}
       <div className="md:hidden bg-white rounded-xl shadow border border-gray-100 overflow-hidden flex">
-        <div className="w-24 bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-4xl flex-shrink-0">
+        <button
+          onClick={onDetail}
+          className="w-24 bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-4xl flex-shrink-0"
+        >
           {src ? (
             <img src={src} alt={name} className="w-full h-full object-cover" />
           ) : (
             <span className="text-4xl">🎂</span>
           )}
-        </div>
+        </button>
         <div className="p-4 flex-1">
-          <div className="font-bold text-pink-900 text-sm mb-1">{name}</div>
+          <button onClick={onDetail} className="font-bold text-pink-900 text-sm mb-1 text-left hover:text-pink-600 transition-colors">
+            {name}
+          </button>
           {description && (
             <div className="text-xs text-gray-500 mb-2">{description}</div>
           )}
@@ -49,16 +56,21 @@ export function ProductCard({ name, price, imageUrl, description, onOrder }: Pro
         </div>
       </div>
 
+      {/* Desktop */}
       <div className="hidden md:block bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all transform hover:-translate-y-1">
-        <div className="h-40 bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center overflow-hidden">
-          {src ? (
-            <img src={src} alt={name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-6xl lg:text-7xl">🎂</span>
-          )}
-        </div>
+        <button onClick={onDetail} className="w-full">
+          <div className="h-40 bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center overflow-hidden">
+            {src ? (
+              <img src={src} alt={name} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-6xl lg:text-7xl">🎂</span>
+            )}
+          </div>
+        </button>
         <div className="p-5">
-          <h3 className="text-lg font-bold text-pink-900 mb-2">{name}</h3>
+          <button onClick={onDetail} className="text-lg font-bold text-pink-900 mb-2 text-left hover:text-pink-600 transition-colors w-full">
+            {name}
+          </button>
           {description && (
             <p className="text-gray-600 text-sm mb-4">{description}</p>
           )}

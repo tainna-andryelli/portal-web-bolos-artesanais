@@ -9,6 +9,7 @@ import { Login } from './pages/Login';
 import { AdminProducts } from './pages/AdminProducts';
 import { ProductForm } from './pages/ProductForm';
 import { AdminOrders } from './pages/AdminOrders';
+import { ProductDetail } from './pages/ProductDetail';
 import { OrderDetails } from './pages/OrderDetails';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
           <Route path="/catalogo" element={<Catalog />} />
           <Route path="/encomenda" element={<Order />} />
           <Route path="/confirmacao/:orderId" element={<Confirmation />} />
+          <Route path="/produto/:id" element={<ProductDetail />} />
           <Route path="/login" element={<Login />} />
 
           {/* Rotas protegidas */}

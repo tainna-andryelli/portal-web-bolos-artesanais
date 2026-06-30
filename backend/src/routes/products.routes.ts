@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   listProducts,
+  listAllProducts,
   getProduct,
   createProduct,
   updateProduct,
@@ -13,10 +14,9 @@ import { createProductSchema, updateProductSchema } from '../schemas';
 const router = Router();
 
 // Rotas públicas
+router.get('/admin/all', requireAuth, listAllProducts);
 router.get('/', listProducts);
 router.get('/:id', getProduct);
-
-// Rotas protegidas (admin)
 router.post('/', requireAuth, validate(createProductSchema), createProduct);
 router.put('/:id', requireAuth, validate(updateProductSchema), updateProduct);
 router.delete('/:id', requireAuth, deleteProduct);

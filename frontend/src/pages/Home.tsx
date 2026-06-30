@@ -75,7 +75,8 @@ export function Home() {
                 <ProductCard
                   key={product.id}
                   {...product}
-                  onOrder={() => navigate('/encomenda')}
+                  onDetail={() => navigate(`/produto/${product.id}`)}
+                  onOrder={() => navigate('/encomenda', { state: { productId: product.id } })}
                 />
               ))}
             </div>

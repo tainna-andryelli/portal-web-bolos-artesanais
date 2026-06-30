@@ -22,7 +22,7 @@ export function AdminProducts() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    apiFetch<Product[]>('/products')
+    apiFetch<Product[]>('/products/admin/all')
       .then(setProducts)
       .catch(() => setError(true))
       .finally(() => setLoading(false));

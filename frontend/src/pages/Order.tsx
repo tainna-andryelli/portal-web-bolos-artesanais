@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Button } from '../components/Button';
 import { apiFetch } from '../services/api';
@@ -30,13 +30,15 @@ interface FormData {
 
 export function Order() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const preselectedProductId = (location.state as { productId?: string } | null)?.productId ?? '';
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
   const [formData, setFormData] = useState<FormData>({
-    productId: '',
+    productId: preselectedProductId,
     size: '',
     deliveryDate: '',
     deliveryTime: '',
